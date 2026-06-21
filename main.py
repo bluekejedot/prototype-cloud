@@ -1,7 +1,13 @@
-from fastapi import FastAPI
+from supabase import create_client, Client
 
-app = FastAPI()
+url = "https://ximofkofzzpwucoyszdm.supabase.co"
+key = "sb_publishable_cdi0yNMdE_mX3mvTIjsfjA_uGBDPMtw"
 
-@app.get("/")
-def home():
-    return {"message": "Sistem Akademik Cloud Berjalan"}
+supabase: Client = create_client(url, key)
+
+# Insert data contoh
+data = supabase.table("logs").insert({
+    "message": "Hello from cloud project"
+}).execute()
+
+print(data)
