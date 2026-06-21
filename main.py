@@ -85,6 +85,7 @@ def get_me(payload: dict = Depends(verify_token)):
         "email": payload["sub"],
         "role": payload["role"]
     }
+
 # -----------------------
 # TEST (CEK DATA USERS)
 # -----------------------
@@ -143,6 +144,24 @@ def get_mahasiswa():
        "status": "success",
        "data": data.data
     }
+
+# -----------------------
+# GET MAHASISWA{ID}
+# -----------------------
+@app.get("/mahasiswa/{mahasiswa_id}")
+def get_mahasiswa_by_id(mahasiswa_id: str):
+
+    data = supabase.table("mahasiswa") \
+        .select("*") \
+        .eq("mahasiswa_id", mahasiswa_id) \
+        .execute()
+
+    if not data.data:
+        return {
+            "error": "Mahasiswa tidak ditemukan"
+        }
+
+    return data.data[0]
 
 # -----------------------
 # POST KRS
@@ -208,6 +227,48 @@ def input_nilai(
     }).execute()
 
     return {"status": "success", "data": data.data}
+
+# -----------------------
+# POST PRESENSI
+# -----------------------
+@app.post("/presensi")
+def input_presensi(
+    mahasiswa_id: str,
+    kode_matkul: str,
+    pertemuan: int,
+    status_hadir: str,
+    payload: dict = Depends(
+        require_role(["dosen", "admin"])
+    )
+):
+
+    data = supabase.table("presensi").insert({
+        "mahasiswa_id": mahasiswa_id,
+        "kode_matkul": kode_matkul,
+        "pertemuan": pertemuan,
+        "status_hadir": status_hadir
+    }).execute()
+
+    return {
+        "status": "success",
+        "data": data.data
+    }    
+
+# -----------------------
+# GET PRESENSI
+# -----------------------
+@app.get("/presensi")
+def get_presensi(kode_matkul: str):
+
+    data = supabase.table("presensi") \
+        .select("*") \
+        .eq("kode_matkul", kode_matkul) \
+        .execute()
+
+    return {
+        "kode_matkul": kode_matkul,
+        "data": data.data
+    }
 
 # -----------------------
 # POST PEMBAYARAN
