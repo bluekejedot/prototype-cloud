@@ -8,6 +8,15 @@ app = FastAPI()
 SECRET_KEY = "cloud-secret"
 ALGORITHM = "HS256"
 
+@app.get("/test-users")
+def test_users():
+
+    result = supabase.table("users").select("*").execute()
+
+    print(result.data)
+
+    return result.data
+
 # -----------------------
 # LOGIN (JWT SIMPLE)
 # -----------------------
@@ -17,23 +26,22 @@ def login(email: str, password: str):
     user = supabase.table("users") \
         .select("*") \
         .eq("email", email) \
-        .eq("password_hash", password) \
         .execute()
+
+    print("DEBUG USER:", user.data)  #cek data pada tabel user
 
     if len(user.data) == 0:
         return {"error": "Login gagal"}
 
-    payload = {
-        "email": email,
-        "exp": datetime.utcnow() + timedelta(hours=2)
-    }
+    db_password = user.data[0]["password_hash"]
 
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    print("DEBUG PASSWORD INPUT:", password)
+    print("DEBUG PASSWORD DB:", db_password)
 
-    return {
-        "token": token,
-        "role": user.data[0]["role"]
-    }
+    if db_password.strip() != password.strip():
+        return {"error": "Login gagal"}
+
+    return {"status": "login sukses"}
 
 # -----------------------
 # GET MAHASISWA
