@@ -8,6 +8,9 @@ app = FastAPI()
 SECRET_KEY = "cloud-secret"
 ALGORITHM = "HS256"
 
+# -----------------------
+# TEST (CEK DATA USERS)
+# -----------------------
 @app.get("/test-users")
 def test_users():
 
@@ -49,31 +52,49 @@ def login(email: str, password: str):
 @app.get("/mahasiswa")
 def get_mahasiswa():
     data = supabase.table("mahasiswa").select("*").execute()
-    return data.data
+    return {
+       "status": "success",
+       "data": data.data
+    }
 
 # -----------------------
 # POST KRS
 # -----------------------
 @app.post("/krs")
-def create_krs(mahasiswa_id: str, semester: int, kode_matkul: str, nama_matkul: str):
+def create_krs(mahasiswa_id: str, semester: int, kode_matkul: str, nama_matkul: str, nama_dosen: str):
+
+    # validasi mahasiswa ada
+    cek = supabase.table("mahasiswa") \
+        .select("*") \
+        .eq("mahasiswa_id", mahasiswa_id) \
+        .execute()
+
+    if not cek.data:
+        return {"error": "Mahasiswa tidak ditemukan"}
 
     data = supabase.table("krs").insert({
         "mahasiswa_id": mahasiswa_id,
         "semester": semester,
         "kode_matkul": kode_matkul,
-        "nama_matkul": nama_matkul
+        "nama_matkul": nama_matkul,
+        "nama_dosen": nama_dosen
     }).execute()
 
-    return {
-        "status": "success",
-        "data": data.data
-    }
+    return {"status": "success", "data": data.data}
 
 # -----------------------
 # POST NILAI
 # -----------------------
 @app.post("/nilai")
 def input_nilai(mahasiswa_id: str, kode_matkul: str, komponen: str, nilai: float):
+
+    cek = supabase.table("mahasiswa") \
+        .select("*") \
+        .eq("mahasiswa_id", mahasiswa_id) \
+        .execute()
+
+    if not cek.data:
+        return {"error": "Mahasiswa tidak ditemukan"}
 
     data = supabase.table("nilai").insert({
         "mahasiswa_id": mahasiswa_id,
@@ -83,12 +104,19 @@ def input_nilai(mahasiswa_id: str, kode_matkul: str, komponen: str, nilai: float
     }).execute()
 
     return {"status": "success", "data": data.data}
-
 # -----------------------
 # POST PEMBAYARAN
 # -----------------------
 @app.post("/pembayaran")
 def pembayaran(mahasiswa_id: str, semester: int, jumlah: float, metode: str):
+
+    cek = supabase.table("mahasiswa") \
+        .select("*") \
+        .eq("mahasiswa_id", mahasiswa_id) \
+        .execute()
+
+    if not cek.data:
+        return {"error": "Mahasiswa tidak ditemukan"}
 
     data = supabase.table("pembayaran").insert({
         "mahasiswa_id": mahasiswa_id,
