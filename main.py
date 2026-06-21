@@ -1,13 +1,90 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase_client import supabase
-from jose import jwt
-from datetime import datetime, timedelta
+from jose import jwt, JWTError
+from datetime import datetime, timedelta, UTC
 
 app = FastAPI()
 
 SECRET_KEY = "cloud-secret"
 ALGORITHM = "HS256"
+security = HTTPBearer()
 
+# -----------------------
+# MEMBUAT TOKEN LOGIN
+# -----------------------
+def create_access_token(user_data: dict):
+
+    payload = {
+        "sub": user_data["email"],
+        "role": user_data["role"],
+        "exp": datetime.now(UTC) + timedelta(hours=2)
+    }
+
+    token = jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+    return token
+
+# -----------------------
+# VERIFIKASI TOKEN
+# -----------------------
+def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        return payload
+
+    except JWTError:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Token tidak valid"
+        )
+
+# -----------------------
+# CEK ROLE
+# -----------------------
+
+def require_role(allowed_roles: list):
+
+    def role_checker(
+        payload: dict = Depends(verify_token)
+    ):
+
+        if payload["role"] not in allowed_roles:
+
+            raise HTTPException(
+                status_code=403,
+                detail="Akses ditolak"
+            )
+
+        return payload
+
+    return role_checker
+
+# -----------------------
+# TEST JWT
+# -----------------------
+@app.get("/me")
+def get_me(payload: dict = Depends(verify_token)):
+
+    return {
+        "email": payload["sub"],
+        "role": payload["role"]
+    }
 # -----------------------
 # TEST (CEK DATA USERS)
 # -----------------------
@@ -31,20 +108,30 @@ def login(email: str, password: str):
         .eq("email", email) \
         .execute()
 
-    print("DEBUG USER:", user.data)  #cek data pada tabel user
-
     if len(user.data) == 0:
-        return {"error": "Login gagal"}
+        raise HTTPException(
+            status_code=401,
+            detail="email tidak ditemukan"
+        )
 
     db_password = user.data[0]["password_hash"]
 
-    print("DEBUG PASSWORD INPUT:", password)
-    print("DEBUG PASSWORD DB:", db_password)
-
     if db_password.strip() != password.strip():
-        return {"error": "Login gagal"}
+        raise HTTPException(
+            status_code=401,
+            detail="Password salah"
+        )
 
-    return {"status": "login sukses"}
+    token = create_access_token({
+        "email": user.data[0]["email"],
+        "role": user.data[0]["role"]
+    })
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.data[0]["role"]
+    }
 
 # -----------------------
 # GET MAHASISWA
@@ -61,7 +148,16 @@ def get_mahasiswa():
 # POST KRS
 # -----------------------
 @app.post("/krs")
-def create_krs(mahasiswa_id: str, semester: int, kode_matkul: str, nama_matkul: str, nama_dosen: str):
+def create_krs(
+    mahasiswa_id: str,
+    semester: int,
+    kode_matkul: str,
+    nama_matkul: str,
+    nama_dosen: str,
+    payload: dict = Depends(
+        require_role(["mahasiswa", "admin"])
+    )
+):
 
     # validasi mahasiswa ada
     cek = supabase.table("mahasiswa") \
@@ -86,7 +182,15 @@ def create_krs(mahasiswa_id: str, semester: int, kode_matkul: str, nama_matkul: 
 # POST NILAI
 # -----------------------
 @app.post("/nilai")
-def input_nilai(mahasiswa_id: str, kode_matkul: str, komponen: str, nilai: float):
+def input_nilai(
+    mahasiswa_id: str,
+    kode_matkul: str,
+    komponen: str,
+    nilai: float,
+    payload: dict = Depends(
+        require_role(["dosen", "admin"])
+    )
+):
 
     cek = supabase.table("mahasiswa") \
         .select("*") \
@@ -104,11 +208,20 @@ def input_nilai(mahasiswa_id: str, kode_matkul: str, komponen: str, nilai: float
     }).execute()
 
     return {"status": "success", "data": data.data}
+
 # -----------------------
 # POST PEMBAYARAN
 # -----------------------
 @app.post("/pembayaran")
-def pembayaran(mahasiswa_id: str, semester: int, jumlah: float, metode: str):
+def pembayaran(
+    mahasiswa_id: str,
+    semester: int,
+    jumlah: float,
+    metode: str,
+    payload: dict = Depends(
+        require_role(["keuangan", "admin"])
+    )
+):
 
     cek = supabase.table("mahasiswa") \
         .select("*") \
