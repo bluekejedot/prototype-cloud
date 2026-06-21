@@ -47,17 +47,18 @@ Project-Cloud/
 ### 1. Clone Repository
 ```bash
 git clone https://github.com/bluekejedot/prototype-cloud.git
-
+```
 ### 2. Masuk ke folder utama
 ```bash
 cd prototype-cloud
-
+```
 ### 3. Jalankan Program
 ```bash
 python main.py
-
+```
 ## Workflow GIT yang digunakan
 ```bash
 git add .
 git commit -m "pesan commit"
 git push origin main
+```
