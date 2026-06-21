@@ -301,3 +301,37 @@ def pembayaran(
     }).execute()
 
     return {"status": "success", "data": data.data}
+
+# -----------------------
+# GET TAGIHAN
+# -----------------------
+@app.get("/tagihan")
+def get_tagihan(
+    mahasiswa_id: str,
+    payload: dict = Depends(require_role(["keuangan", "admin"]))
+):
+    data = supabase.table("pembayaran") \
+        .select("*") \
+        .eq("mahasiswa_id", mahasiswa_id) \
+        .order("created_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    if not data.data:
+        return {
+            "status": "not_found",
+            "message": "Data tagihan tidak ditemukan"
+        }
+
+    tagihan = data.data[0]
+
+    return {
+        "mahasiswa_id": tagihan["mahasiswa_id"],
+        "total_tagihan": tagihan["jumlah"],
+        "status_pembayaran": tagihan["status"],
+        "keterangan": (
+            "Tagihan sudah lunas"
+            if tagihan["status"] == "PAID"
+            else "Tagihan belum dibayar"
+        )
+    }
