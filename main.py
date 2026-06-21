@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase_client import supabase
@@ -6,8 +7,8 @@ from datetime import datetime, timedelta, UTC
 
 app = FastAPI()
 
-SECRET_KEY = "cloud-secret"
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("SECRET_KEY", "cloud-secret")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 security = HTTPBearer()
 
 # -----------------------
